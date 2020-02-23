@@ -1,0 +1,9 @@
+{% extends 'scraper/base.html' %}
+
+{% block content %}
+    <h3>Enter the location</h3>
+    <form method="POST" href="scraper/location.html" >{% csrf_token %}
+        <input type="text" name="location" >
+        <button type="submit">Scrape it!!</button>
+    </form>
+{% endblock %}
