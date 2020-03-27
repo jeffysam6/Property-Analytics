@@ -20,7 +20,7 @@ cors = CORS(app, resources={r"/*": {"origins": "*"}})
 
 
 @app.route('/api')
-def location(label=None):
+def single_page(label=None):
 
     url = "https://www.99acres.com/"
     option = webdriver.ChromeOptions()
@@ -34,7 +34,7 @@ def location(label=None):
     # option.add_argument("--disable-dev-shm-usage")
     # option.add_argument("--no-sandbox")
     # option.add_argument("--ignore-certificate-errors")
-    option.add_argument("--incognito")
+    # option.add_argument("--incognito")
 
     option.add_argument("user-agent= 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/80.0.3987.122 Safari/537.36'")
 
@@ -72,7 +72,7 @@ def location(label=None):
                 'bedroom' : i.find_element_by_id('srp_tuple_bedroom').text.split('\n')[0],
                 'bathroom' : i.find_element_by_id('srp_tuple_bedroom').text.split('\n')[1],
                 'post_link' : i.find_element_by_id('srp_tuple_property_title').get_attribute('href'),
-                'location' : i.find_element_by_xpath('//*[@id="srp_tuple_property_title"]/h2').text.split("in")[-1]
+                'location' : i.find_element_by_id('srp_tuple_property_title').text.split("in")[-1]
                 }
 
                 if(i.find_element_by_id('srp_tuple_price').text.split('\n')[0][2:].split(" ")[-1] == "Cr"):
@@ -83,6 +83,96 @@ def location(label=None):
             except:
                 print("Missing values")
 
+
+        driver.implicitly_wait(30)
+        driver.close()
+
+        with open(f"{location}_location.json", 'w', encoding='utf-8', errors='ignore') as f:
+
+            json.dump(extracted_records, f, ensure_ascii=False, indent=4)
+
+        # return extracted_records
+        return jsonify(extracted_records)
+
+
+@app.route('/api/multiple')
+def multiple_page(label=None):
+
+    url = "https://www.99acres.com/"
+    option = webdriver.ChromeOptions()
+
+    option.add_argument("user-agent= 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/80.0.3987.122 Safari/537.36'")
+
+   
+    location = request.args.get('location')
+
+    try:
+        f = open(f"{location}_location.json", encoding='utf-8', errors='ignore')
+        print(location)
+        data = json.load(f)
+        return jsonify(data)
+
+    except FileNotFoundError:
+
+        def adding_post(post_list):
+            for i in post_list:
+
+                try:
+                    record = {
+                    'total_price' : i.find_element_by_id('srp_tuple_price').text.split('\n')[0][2:],
+                    'cost_square' : i.find_element_by_id('srp_tuple_price').text.split('\n')[1][2:],
+                    'square' : i.find_element_by_id('srp_tuple_primary_area').text.split('\n')[0],
+                    'bedroom' : i.find_element_by_id('srp_tuple_bedroom').text.split('\n')[0],
+                    'bathroom' : i.find_element_by_id('srp_tuple_bedroom').text.split('\n')[1],
+                    'post_link' : i.find_element_by_id('srp_tuple_property_title').get_attribute('href'),
+                    'location' : i.find_element_by_id('srp_tuple_property_title').text.split("in")[-1]
+                    }
+
+                    if('-' in i.find_element_by_id('srp_tuple_price').text.split('\n')[0][2:]):
+                        price = i.find_element_by_id('srp_tuple_price').text.split('\n')[0][2:].split(" ")[0]
+
+                        if(i.find_element_by_id('srp_tuple_price').text.split('\n')[0][2:].split(" ")[-1] == "Cr"):
+                            price = str(float(price) * 100) + " Lac"
+
+                        else:
+                            price = price + " Lac"
+
+                        record['total_price'] = price
+
+                    elif(i.find_element_by_id('srp_tuple_price').text.split('\n')[0][2:].split(" ")[-1] == "Cr"):
+                        record['total_price'] = str(float(i.find_element_by_id('srp_tuple_price').text.split('\n')[0][2:].split(" ")[0]) * 100) + " Lac"
+
+                    extracted_records.append(record)
+
+                except:
+                    print("Error in value")
+
+
+        driver = webdriver.Chrome(executable_path='chromedriver', chrome_options=option)        
+        driver.implicitly_wait(50)
+        driver.get(url)
+        search =  driver.find_element_by_id('keyword')
+        search.send_keys(location)
+        submit = driver.find_element_by_id('submit_query')
+        submit.click()
+        sleep(10)
+        driver.implicitly_wait(50)
+        pages = driver.find_elements_by_xpath("//div[@class='Pagination__srpPageBubble list_header_semiBold']/a")
+
+        extracted_records = []
+
+        for page in range(0,len(pages)//2):
+            p = pages[page].get_attribute('href')
+            driver.execute_script("window.open('');")
+            driver.switch_to.window(driver.window_handles[1])
+            driver.get(p)
+            post_list = driver.find_elements_by_xpath("//div[@class='pageComponent srpTop__tuplesWrap']/div[@class='pageComponent srpTuple__srpTupleBox srp']")
+            adding_post(post_list)
+            sleep(10)
+            driver.close()
+            driver.switch_to.window(driver.window_handles[0])
+
+    
 
         driver.implicitly_wait(30)
         driver.close()
