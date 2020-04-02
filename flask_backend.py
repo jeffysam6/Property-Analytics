@@ -4,7 +4,7 @@ import csv
 import pandas as pd
 from selenium import webdriver
 from selenium.webdriver.common.keys import Keys
-from bs4 import BeautifulSoup
+from bs4 import BeautifulSoup as soup
 import re
 from tabulate import tabulate
 from time import sleep
@@ -95,7 +95,7 @@ def single_page(label=None):
         return jsonify(extracted_records)
 
 
-@app.route('/api/multiple')
+@app.route('/api/multiple_legacy')
 def multiple_page(label=None):
 
     url = "https://www.99acres.com/"
@@ -186,86 +186,134 @@ def multiple_page(label=None):
 
 
 
-# @app.route('/user')
-# def users(label=None):
-#     url = "http://chuachinhon.pythonanywhere.com"
+@app.route('/api/multiple')
+def fast_multiple_page(label=None):
 
-#     option = webdriver.ChromeOptions()
-#     option.add_argument("--window-size=1920,1080")
-#     option.add_argument("--disable-extensions")
-#     option.add_argument("--proxy-server='direct://'")
-#     option.add_argument("--proxy-bypass-list=*")
-#     option.add_argument("--start-maximized")
-#     option.add_argument("--headless")
-#     option.add_argument("--disable-gpu")
-#     option.add_argument("--disable-dev-shm-usage")
-#     option.add_argument("--no-sandbox")
-#     option.add_argument("--ignore-certificate-errors")
-#     option.add_argument("--incognito")
+    url = "https://www.makaan.com/"
+    option = webdriver.ChromeOptions()
+    # option.add_argument("--window-size=1920,1080")
+    # option.add_argument("--disable-extensions")
+    # option.add_argument("--proxy-server='direct://'")
+    # option.add_argument("--proxy-bypass-list=*")
+    # option.add_argument("--start-maximized")
+    # option.add_argument("--headless")
+    # option.add_argument("--disable-gpu")
+    # option.add_argument("--disable-dev-shm-usage")
+    # option.add_argument("--no-sandbox")
+    # option.add_argument("--ignore-certificate-errors")
+    option.add_argument("--incognito")
+    option.add_argument("user-agent= 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/80.0.3987.122 Safari/537.36'")
 
-#     option.add_argument(
-#         "user-agent= 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/80.0.3987.122 Safari/537.36'")
-#     path = 'scrape.png'
+   
+    location = request.args.get('location')
 
-#     driver = webdriver.Chrome(
-#         executable_path='chromedriver', chrome_options=option)
-#     username = request.args.get('username')
+    try:
+        f = open(f"{location}_location.json", encoding='utf-8', errors='ignore')
+        print(location)
+        data = json.load(f)
+        return jsonify(data)
 
-#     try:
-#         f = open(f"{username}_username.json",
-#                  encoding='utf-8', errors='ignore')
-#         data = json.load(f)
-#         return jsonify(data)
+    except FileNotFoundError:
 
-#     except:
+        option.add_argument("user-agent= 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/80.0.3987.122 Safari/537.36'")
+        driver = webdriver.Chrome(executable_path='chromedriver',chrome_options=option)
+        driver.implicitly_wait(30)
+        driver.get(url)
+        sleep(5)
+        driver.implicitly_wait(30)
+        search =  driver.find_element_by_class_name('css-966okg')
+        search.send_keys(location)
+        drop = driver.find_element_by_class_name("css-zmzvs7")
+        driver.implicitly_wait(30)
+        drop.click()
+        driver.implicitly_wait(100)
+        submit = driver.find_element_by_class_name('css-1hlc5qw')
+        submit.click()
 
-#         consumer_key = ''
-#         consumer_secret = ''
-#         access_token_key = ''
-#         access_token_secret = ''
-#         auth = tweepy.OAuthHandler(consumer_key, consumer_secret)
-#         auth.set_access_token(access_token_key, access_token_secret)
-#         api = tweepy.API(auth)
+        # sleep(10)
 
-#         number_of_tweets = 10
+        url = driver.current_url
 
-#         tweets = api.user_timeline(screen_name=username)
-#         tweets_for_csv = [tweet.text for tweet in tweets]
+        dataset = []
 
-#         temp_data = []
-#         data = []
+        number = 0
 
-#         for i in tweets_for_csv:
-#             temp_data.append(i)
+        for page in range(1,15):
 
-#         for index, i in enumerate(temp_data):
-#             obj = {}
-#             driver.get(url)
-#             search = driver.find_element_by_xpath(
-#                 '/html/body/div[1]/form/textarea')
-#             obj['tweet'] = i
-#             obj['id'] = index
-#             text = i.split(" ")
-#             cleaned_text = [t.lower() for t in text if(t.isalpha())]
-#             search.send_keys(' '.join(cleaned_text))
-#             submit = driver.find_element_by_class_name('btn-info')
-#             submit.click()
-#             # sleep(1)
-#             result = driver.find_element_by_xpath('/html/body/div/p')
-#             if(result.text == "Real tweet"):
-#                 obj["is_troll"] = 0
-#             else:
-#                 obj["is_troll"] = 1
+            page_url = f'{url}?page='+str(page)
 
-#             sleep(1)
+            response = requests.get(url)
 
-#             data.append(obj)
+            page_html = soup(response.text, 'html.parser') 
 
-#         with open(f"{username}_username.json", 'w', encoding='utf-8', errors='ignore') as f:
+            house_containers = page_html.find_all("li",class_="cardholder")
 
-#             json.dump(data, f, ensure_ascii=False, indent=4)
+            for data in house_containers:
+                record = {}
 
-#     return jsonify(data)
+                location_ = data.find_all("a",class_="loclink")
+                for i in location_:
+                        d=i.text
+                        r = d.split(',',)[0]
+
+                record["location"] = r
+
+
+                cost=data.find_all("td",class_="price")
+                for i in cost:
+                    d=i.text
+                    if 'L' in d:
+                        a = d.split()[0]
+                        record["total_price"] = float(a) 
+                    elif 'Cr' in d:
+                        b = d.split()[0]
+                        record["total_price"] = float(b) * 100
+                    else:  
+                        e=0
+                        record["total_price"] =float(e)
+
+
+                rate_sqft=data.find_all('td',class_="lbl rate")
+                for i in rate_sqft:
+                    d=i.text
+                    res= d.split('/',)[0]
+                    r=re.sub(",","" ,res) 
+                    record["cost_square"] = r
+
+
+                area_sqft=data.find_all('td',class_="size")
+                for i in area_sqft:
+                    d=i.text
+                    record["square"] = d
+
+                building_status_=data.find_all("td",class_="val")
+                for i in building_status_:
+                    d=i.text
+                    record["building_status"] = d
+
+
+                bhk = data.find_all("a",class_="typelink")
+                for i in bhk:
+                    link = i.get('href')
+                    d=i.text
+                    r = d.split(',',)[0]
+
+                record["post_link"] = link
+                record["bedroom"] = ' '.join(r.split(" ")[:2])
+                record["city"] = location
+
+                dataset.append(record)
+
+                number += 1
+
+
+        print(number)
+        with open(f"{location}_location.json", 'w', encoding='utf-8', errors='ignore') as f:
+
+            json.dump(dataset, f, ensure_ascii=False, indent=4)
+
+        # return extracted_records
+        return jsonify(dataset)
 
 
 if __name__ == '__main__':
