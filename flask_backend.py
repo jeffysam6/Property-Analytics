@@ -6,7 +6,6 @@ from selenium import webdriver
 from selenium.webdriver.common.keys import Keys
 from bs4 import BeautifulSoup as soup
 import re
-from tabulate import tabulate
 from time import sleep
 import requests
 
@@ -203,9 +202,8 @@ def fast_multiple_page(label=None):
     # option.add_argument("--ignore-certificate-errors")
     option.add_argument("--incognito")
     option.add_argument("user-agent= 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/80.0.3987.122 Safari/537.36'")
-
-   
     location = request.args.get('location')
+    location = location.lower()
 
     try:
         f = open(f"{location}_location.json", encoding='utf-8', errors='ignore')
@@ -214,21 +212,25 @@ def fast_multiple_page(label=None):
         return jsonify(data)
 
     except FileNotFoundError:
-
+        
         option.add_argument("user-agent= 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/80.0.3987.122 Safari/537.36'")
         driver = webdriver.Chrome(executable_path='chromedriver',chrome_options=option)
         driver.implicitly_wait(30)
         driver.get(url)
         sleep(5)
         driver.implicitly_wait(30)
-        search =  driver.find_element_by_class_name('css-966okg')
+        search =  driver.find_element_by_xpath('/html/body/div[1]/main/div/section[1]/div[1]/div/div[3]/div[1]/div/div/div/div[2]/input')
         search.send_keys(location)
-        drop = driver.find_element_by_class_name("css-zmzvs7")
+        drop = driver.find_element_by_class_name("result-type")
         driver.implicitly_wait(30)
         drop.click()
         driver.implicitly_wait(100)
-        submit = driver.find_element_by_class_name('css-1hlc5qw')
+        sleep(1)
+        submit = driver.find_element_by_class_name('js-count-properties')
         submit.click()
+        # driver.implicitly_wait(100)
+        # submit = driver.find_element_by_class_name('css-1hlc5qw')
+        # submit.click()
 
         # sleep(10)
 
