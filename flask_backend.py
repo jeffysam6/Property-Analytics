@@ -274,13 +274,14 @@ def fast_multiple_page(label=None):
                         record["location_coordinates"] = location_dict[record["location"]]
                     
                     else:
-                        req_loc = requests.get(f'https://maps.googleapis.com/maps/api/geocode/json?address={record["location"]}&key=AIzaSyD5gN9lDFp22bYRK5U8-2KhgpjkqNoqr7o')
+                        req_loc = requests.get(f'https://maps.googleapis.com/maps/api/geocode/json?address={record["location"]},{location}&key=AIzaSyD5gN9lDFp22bYRK5U8-2KhgpjkqNoqr7o')
                         req_loc = req_loc.json()["results"][0]["geometry"]["location"]
                         record["location_coordinates"] = {"lat":req_loc["lat"],"lng":req_loc["lng"]}
                         location_dict[record["location"]] = record["location_coordinates"]
             
                 except:
-                    break
+                    print("error")
+                    
                         
                 
                 
