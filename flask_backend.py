@@ -200,10 +200,13 @@ def fast_multiple_page(label=None):
     # option.add_argument("--disable-dev-shm-usage")
     # option.add_argument("--no-sandbox")
     # option.add_argument("--ignore-certificate-errors")
+    option.add_argument("--headless")
     option.add_argument("--incognito")
     option.add_argument("user-agent= 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/80.0.3987.122 Safari/537.36'")
     location = request.args.get('location')
     location = location.lower()
+    
+    google_map_api = f"https://maps.googleapis.com/maps/api/geocode/json?address={location}&key=AIzaSyD5gN9lDFp22bYRK5U8-2KhgpjkqNoqr7o"
 
     try:
         f = open(f"{location}_location.json", encoding='utf-8', errors='ignore')
@@ -212,7 +215,9 @@ def fast_multiple_page(label=None):
         return jsonify(data)
 
     except FileNotFoundError:
-        
+        req = requests.get(google_map_api)
+        r = req.json()["results"][0]["geometry"]["location"]
+        city_coordinates = {"lat":r["lat"],"lng":r["lng"]}
         option.add_argument("user-agent= 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/80.0.3987.122 Safari/537.36'")
         driver = webdriver.Chrome(executable_path='chromedriver',chrome_options=option)
         driver.implicitly_wait(30)
@@ -235,10 +240,14 @@ def fast_multiple_page(label=None):
         # sleep(10)
 
         url = driver.current_url
+        
+        driver.close()
 
         dataset = []
 
         number = 0
+        
+        location_dict = {}
 
         for page in range(1,15):
 
@@ -259,9 +268,23 @@ def fast_multiple_page(label=None):
                         r = d.split(',',)[0]
 
                 record["location"] = r
-
-
-                cost=data.find_all("td",class_="price")
+                
+                try:
+                    if(record["location"] in location_dict.keys()):
+                        record["location_coordinates"] = location_dict[record["location"]]
+                    
+                    else:
+                        req_loc = requests.get(f'https://maps.googleapis.com/maps/api/geocode/json?address={record["location"]}&key=AIzaSyD5gN9lDFp22bYRK5U8-2KhgpjkqNoqr7o')
+                        req_loc = req_loc.json()["results"][0]["geometry"]["location"]
+                        record["location_coordinates"] = {"lat":req_loc["lat"],"lng":req_loc["lng"]}
+                        location_dict[record["location"]] = record["location_coordinates"]
+            
+                except:
+                    break
+                        
+                
+                
+                cost = data.find_all("td",class_="price")
                 for i in cost:
                     d=i.text
                     if 'L' in d:
@@ -303,6 +326,8 @@ def fast_multiple_page(label=None):
                 record["post_link"] = link
                 record["bedroom"] = ' '.join(r.split(" ")[:2])
                 record["city"] = location
+                
+                record["city_coordinates"] = city_coordinates
 
                 dataset.append(record)
 
